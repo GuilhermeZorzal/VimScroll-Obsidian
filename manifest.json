@@ -1,0 +1,11 @@
+{
+	"id": "vim-scroll",
+	"name": "Vim Scroll",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Vim scroll on visualization mode",
+	"author": "Obsidian",
+	"authorUrl": "https://obsidian.md",
+	"fundingUrl": "https://obsidian.md/pricing",
+	"isDesktopOnly": false
+}

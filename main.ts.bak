@@ -1,0 +1,139 @@
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+
+// Remember to rename these classes and interfaces!
+
+interface MyPluginSettings {
+	mySetting: string;
+}
+
+const DEFAULT_SETTINGS: MyPluginSettings = {
+	mySetting: 'default',
+}
+
+
+export default class VimScrollPlugin extends Plugin {
+	settings: MyPluginSettings;
+	scrollType: "smooth"
+
+	async onload() {
+		await this.loadSettings();
+
+		document.addEventListener('keydown', this.handleKeyPress);
+	}
+	onunload() {
+		document.removeEventListener('keydown', this.handleKeyPress);
+	}
+
+	handleKeyPress = (event: KeyboardEvent) => {
+		const activeLeaf = this.app.workspace.activeLeaf;
+
+		// Check if there is an active markdown view
+		if (activeLeaf && activeLeaf.view.getViewType() === 'markdown') {
+		  const markdownView = activeLeaf.view as MarkdownView;
+		  const mode = markdownView.getMode();
+
+		  if (mode === 'preview') {
+			// Scroll the preview pane
+			if (event.key === 'j') {
+			  this.scrollPreviewPane(30); // Scroll down by 30 pixels
+			  event.preventDefault(); // Prevent default behavior
+			} else if (event.key === 'k') {
+			  this.scrollPreviewPane(-30); // Scroll up by 30 pixels
+			  event.preventDefault(); // Prevent default behavior
+			} else if (event.key === 'g') {
+			  this.scrollPreviewPaneBeginning(); // Scroll up by 30 pixels
+			  event.preventDefault(); // Prevent default behavior
+			} 
+			else if (event.key === 'G') {
+			  this.scrollPreviewPaneEnd(); // Scroll up by 30 pixels
+			  event.preventDefault(); // Prevent default behavior
+			}
+		  }
+		}
+	}
+	async scrollPreviewPaneEnd() {
+		let markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (markdownView) {
+			const file = this.app.workspace.getActiveFile()
+			const content = await (this.app as any).vault.cachedRead(file);
+			const lines = content.split('\n');
+			let numberOfLines = lines.length;
+			//in preview mode don't count empty lines at the end
+			if (markdownView.getMode() === 'preview') {
+				while (numberOfLines > 0 && lines[numberOfLines - 1].trim() === '') {
+					numberOfLines--;
+				}
+			}
+			markdownView.currentMode.applyScroll((numberOfLines - 1))
+		} 	  
+	}
+
+	async scrollPreviewPaneBeginning() {
+		let markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (markdownView) {
+			const preview = markdownView.previewMode;
+			preview.applyScroll(0);
+	  }
+	}
+	scrollPreviewPane(amount: number) {
+		const activeLeaf = this.app.workspace.activeLeaf;
+		if (!activeLeaf || activeLeaf.view.getViewType() !== 'markdown') return;
+
+		const previewContainer = activeLeaf.view.containerEl.querySelector('.markdown-preview-view');
+		if (previewContainer) {
+		  previewContainer.scrollBy({
+			top: amount,
+			behavior: this.scrollType
+		  });
+		}
+	  }
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
+	}
+}
+
+class SampleModal extends Modal {
+	constructor(app: App) {
+		super(app);
+	}
+
+	onOpen() {
+		const {contentEl} = this;
+		contentEl.setText('Woah!');
+	}
+
+	onClose() {
+		const {contentEl} = this;
+		contentEl.empty();
+	}
+}
+
+class SampleSettingTab extends PluginSettingTab {
+	plugin: VimScrollPlugin;
+
+	constructor(app: App, plugin: VimScrollPlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		const {containerEl} = this;
+
+		containerEl.empty();
+
+		new Setting(containerEl)
+			.setName('Setting #1')
+			.setDesc('It\'s a secret')
+			.addText(text => text
+				.setPlaceholder('Enter your secret')
+				.setValue(this.plugin.settings.mySetting)
+				.onChange(async (value) => {
+					this.plugin.settings.mySetting = value;
+					await this.plugin.saveSettings();
+				}));
+	}
+}
